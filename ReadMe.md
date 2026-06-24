@@ -21,7 +21,7 @@ make -j
 * Add this repository as a neuralSPOT module. From the `neuralSPOT` root run:
 ```
 cd apps/
-git clone this repo
+git clone git@github.com:Yasminebenhamadi/TinyBioacAI-Apollo5.git
 ```
 
 * To compile, deploy and view the code you can you the `neuralspot` `make` system. Go back the the `neuralSPOT` root directory and run:
