@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Apollo5 Debug (J-Link)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "servertype": "jlink",
+      "device": "AP510NFA-CBR",
+      "interface": "swd",
+
+      "executable": "../../../build/apollo510_evb/arm-none-eabi/apps/yh_app/yh_app.axf",
+
+      "runToEntryPoint": "main",
+
+      "swoConfig": {
+        "enabled": true,
+        "cpuFrequency": 96105000,
+        "swoFrequency": 1000000,
+        "source": "probe",
+        "decoders": [
+          {
+            "port": 0,
+            "type": "console"
+          }
+        ]
+      }
+    }
+  ]
+}
