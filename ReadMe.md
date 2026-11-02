@@ -2,12 +2,13 @@
 
 ## Overview
 
-This repository is a draft project for benchmarking different audio frontends and TensorFlow Lite (TFLite) models on the Ambiq Apollo5 platform.
+This repository contains benchmarking code for evaluating log-mel spectrograms, convolutional neural networks (CNNs), and bit-sliced Gabor frontends proposed in the [associated paper (HAL)](https://hal.science/hal-05758524v2).
 
-It currently includes code for:
+It currently includes implementations for:
 
-1. **Audio feature extraction:** Computing the Short-Time Fourier Transform (STFT) and mel spectrograms.
-2. **TFLite inference:** Running TensorFlow Lite models on Apollo5.
+1. **Audio feature extraction:** Computing Short-Time Fourier Transforms (STFTs) and mel spectrograms.
+2. **TFLite inference:** Running TensorFlow Lite models on the Ambiq Apollo5 platform.
+3. **Bit-sliced gabor frontend** Running a real Gabor layer on MSB and LSB of an audio signal. 
 
 ## Compile and Run on Apollo5
 
@@ -45,7 +46,7 @@ Open a terminal in the neuralSPOT root directory and run:
 make view
 ```
 
-This opens the serial monitor and allows you to view the benchmark output from the board.
+This opens the serial monitor, allowing you to view benchmark output from the board.
 
 ### 4. Compile and Deploy
 
