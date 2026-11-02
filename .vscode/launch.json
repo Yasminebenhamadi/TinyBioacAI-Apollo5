@@ -9,7 +9,7 @@
       "device": "AP510NFA-CBR",
       "interface": "swd",
 
-      "executable": "../../../build/apollo510_evb/arm-none-eabi/apps/yh_app/yh_app.axf",
+      "executable": "../../../build/apollo510_evb/arm-none-eabi/apps/TinyBioacAI-Apollo5/TinyBioacAI-Apollo5.axf",
 
       "runToEntryPoint": "main",
 

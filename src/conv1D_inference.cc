@@ -11,8 +11,10 @@
 #include <stddef.h>
 #include "arm_math.h"
 
-#include "tflite_utils.h"
+#include "gabor_tflite_utils.h"
+#include "backbone_tflite_utils.h"
 #include "gabor_layer.h"
+#include "gabor_cnn.h"
 
 
 static ns_timer_config_t timer_cfg = {
@@ -26,6 +28,7 @@ static ns_timer_config_t timer_cfg = {
 int8_t *audio_low, * audio_high;
 
 #define OUT_LEN 480 * 32
+#define NB_RUNS 200
 
 int8_t output_high[OUT_LEN];
 int8_t output_low[OUT_LEN];
@@ -167,6 +170,13 @@ int main(void)
 
     u_int32_t gabor_init_us = 0, gabor_us=0, get_high=0, get_low=0, re_ticks=0;
 
+    u_int32_t model_init_us = 0, inference_us=0, prepare_us=0;
+
+    t0 = ns_us_ticker_read(&timer_cfg);
+    model_init(gabor_CNN_tflite);
+    t1 = ns_us_ticker_read(&timer_cfg);
+    model_init_us=t1-t0;
+
     for (int i = 0; i < OUT_LEN; i++)
         output_high[i] = (rand() % 255) - 128;
     
@@ -176,63 +186,102 @@ int main(void)
 
 
     t0 = ns_us_ticker_read(&timer_cfg);
-    model_init(gabor_feature_2D_int8_model_tflite);
+    gabor_model_init(gabor_feature_2D_int8_model_tflite);
     t1 = ns_us_ticker_read(&timer_cfg);
     gabor_init_us=t1-t0;
 
-    while(1){
-        for(int run=0; run<20; run++){
-            audio_high=model_input->data.int8; 
+    ns_lp_printf("Gabor layer setup: %lu us\n", gabor_init_us);
+
+    // Fill input properly
+    int8_t * backbone_input = (int8_t *) model_input->data.int8;
+    float input_scale = model_input->params.scale;
+	int input_zero_point = model_input->params.zero_point;
+
+    total0 = ns_us_ticker_read(&timer_cfg);
+    for(int run=0; run<NB_RUNS; run++){
+            audio_high=gabor_model_input->data.int8; 
 
             t0 = ns_us_ticker_read(&timer_cfg);
-            total0 = ns_us_ticker_read(&timer_cfg);
-            arm_q15_to_q7(audio_int16, audio_high, model_input->bytes / sizeof(int8_t));
+            arm_q15_to_q7(audio_int16, audio_high, gabor_model_input->bytes / sizeof(int8_t));
             t1 = ns_us_ticker_read(&timer_cfg);
-            get_high=t1-t0;
+            get_high+=t1-t0;
 
             // Warm-up
-            interpreter->Invoke();
+            gabor_interpreter->Invoke();
 
             // Timed run
             t0 = ns_us_ticker_read(&timer_cfg);
-            interpreter->Invoke();
+            gabor_interpreter->Invoke();
             t1 = ns_us_ticker_read(&timer_cfg);
-            gabor_us = t1 - t0;
+            gabor_us+=t1-t0;
 
 
-            audio_low=model_input->data.int8;
+            audio_low=gabor_model_input->data.int8;
 
             t0 = ns_us_ticker_read(&timer_cfg);
-            get_LSB(audio_int16, audio_low, model_input->bytes / sizeof(int8_t));
+            get_LSB(audio_int16, audio_low, gabor_model_input->bytes / sizeof(int8_t));
             t1 = ns_us_ticker_read(&timer_cfg);
-            get_low=t1-t0;
+            get_low+=t1-t0;
 
             t0 = ns_us_ticker_read(&timer_cfg);
             reconstruct_int16(output_high,output_low,output_recon,OUT_LEN);
             t1 = ns_us_ticker_read(&timer_cfg);
-            re_ticks = t1 - t0;
+            re_ticks+= t1 - t0;
 
-            total1 = ns_us_ticker_read(&timer_cfg);
-        }
-
-        ns_delay_us(100000);
-        ns_lp_printf("Returning");
-
+            arm_offset_q15(output_recon, 1e-6f, output_recon, OUT_LEN);
+            arm_vlog_q15(output_recon, output_recon, OUT_LEN/4);
     }
+    total1 = ns_us_ticker_read(&timer_cfg);
 
     // Results
-    ns_lp_printf("Model setup: %lu us\n", gabor_init_us);
+    ns_lp_printf("\n\n--------Gabor frontend results:--------\n");
 
-    ns_lp_printf("Getting MSB: %lu us\n", get_high);
-    ns_lp_printf("Inference on MSB: %lu us\n", gabor_us);
+    ns_lp_printf("Getting MSB: %lu us\n", get_high/NB_RUNS);
+    ns_lp_printf("Inference on MSB: %lu us\n", gabor_us/NB_RUNS);
 
-    ns_lp_printf("Getting LSB: %lu us\n", get_low);
-    ns_lp_printf("Inference on LSB: %lu us\n", gabor_us);
+    ns_lp_printf("Getting LSB: %lu us\n", get_low/NB_RUNS);
+    ns_lp_printf("Inference on LSB: %lu us\n", gabor_us/NB_RUNS);
 
-    ns_lp_printf("Combing low and high: %lu us\n", re_ticks);
+    ns_lp_printf("Combing low and high: %lu us\n", re_ticks/NB_RUNS);
 
-    ns_lp_printf("Total Gabor: %lu us\n", total1-total0);
-    
+    ns_lp_printf("Total Gabor: %lu us\n \n", (total1-total0)/NB_RUNS);
+
+
+    // Timed run
+    t0 = ns_us_ticker_read(&timer_cfg);
+
+    for(int i=0; i<OUT_LEN/4; i++){
+        int value = (int)(round((output_recon[i] / input_scale) + input_zero_point));
+        
+        if (value < -128)
+            value = -128;
+        else if (value > 127)
+            value = 127;
+        *(backbone_input+i) = (int8_t)(value);
+    }
+
+    t1 = ns_us_ticker_read(&timer_cfg);
+    prepare_us = t1 - t0;
+
+    // Warm-up
+    interpreter->Invoke();
+
+    // Timed run
+    t0 = ns_us_ticker_read(&timer_cfg);
+
+    interpreter->Invoke();
+
+    t1 = ns_us_ticker_read(&timer_cfg);
+
+    inference_us = t1 - t0;
+
+    ns_lp_printf("Model setup time: %lu us\n", model_init_us);
+
+    ns_lp_printf("\n\n--------Gabor backend results:--------\n");
+
+    ns_lp_printf("Inference time: %lu us\n", inference_us);
+    ns_lp_printf("Prepare time: %lu us\n", prepare_us);
+    ns_lp_printf("Total time: %lu us\n", prepare_us + inference_us);
     return 0;
 }
 #endif

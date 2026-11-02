@@ -2,7 +2,7 @@
 #define AUDIO_GUARD
 
 #define SAMPLE_RATE 20480
-#define AUDIO_LEN 72000//30720
+#define AUDIO_LEN 30720
 
 #define MEL_MAIN 0
 

@@ -1,6 +1,6 @@
 # apps/my_app/module.mk
 
-local_app_name := yh_app
+local_app_name := TinyBioacAI-Apollo5
 
 local_src := $(wildcard $(subdirectory)/src/*.c)
 local_src += $(wildcard $(subdirectory)/src/*.cc)

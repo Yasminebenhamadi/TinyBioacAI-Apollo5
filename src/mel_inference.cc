@@ -11,7 +11,7 @@
 #include "arm_math.h"
 
 #include "audio.h"
-#include "tflite_utils.h"
+#include "backbone_tflite_utils.h"
 
 static ns_timer_config_t timer_cfg = {
     .api = &ns_timer_V1_0_0,
@@ -30,6 +30,7 @@ static ns_timer_config_t timer_cfg = {
 // Buffer and addresses used for calculating mel spectogram 
 
 #define NUM_FRAMES (((AUDIO_LEN - FFT_SIZE) / FRAME_SHIFT) + 1)
+#define NB_RUNS 200
 
 float fft_buff1[FFT_SIZE];
 float fft_buff2[FFT_SIZE];
@@ -92,11 +93,11 @@ int main(void){
 	int input_zero_point = model_input->params.zero_point;
     
 
-    while(1)
+    if(1)
     {   
         uint32_t tl0 = ns_us_ticker_read(&timer_cfg);
 
-        for(int run=0; run<20; run++){
+        for(int run=0; run<NB_RUNS; run++){
             for (int s = 0; s < NUM_FRAMES; s++){
                 t0 = ns_us_ticker_read(&timer_cfg);
                 arm_q15_to_float(audio_int16 + (s * FRAME_SHIFT), frame_f32, FFT_SIZE);
@@ -148,20 +149,19 @@ int main(void){
                 mel_us += (t1 - t0);
             }
 
-            uint32_t tl1 = ns_us_ticker_read(&timer_cfg);
+            
 
-            melspec_us = tl1-tl0; 
+             
         }
-
-        ns_delay_us(500000);
-        ns_lp_printf("Returning\n");
+        uint32_t tl1 = ns_us_ticker_read(&timer_cfg);
+        melspec_us = tl1-tl0;
     }
 
 
-    ns_lp_printf("Mel spectogram - to float: %lu us\n", to_float_us);
-    ns_lp_printf("Mel spectogram - Hann+FFT+CmplxMag: %lu us\n", fft_us);
-    ns_lp_printf("Mel spectogram - Filterbanks + log: %lu us\n", mel_us);
-    ns_lp_printf("Mel spectogram - total time: %lu us\n", melspec_us);
+    ns_lp_printf("Mel spectogram - to float: %lu us\n", to_float_us/NB_RUNS);
+    ns_lp_printf("Mel spectogram - Hann+FFT+CmplxMag: %lu us\n", fft_us/NB_RUNS);
+    ns_lp_printf("Mel spectogram - Filterbanks + log: %lu us\n", mel_us/NB_RUNS);
+    ns_lp_printf("Mel spectogram - total time: %lu us\n", melspec_us/NB_RUNS);
 
     // Warm-up
     interpreter->Invoke();
@@ -169,7 +169,10 @@ int main(void){
     // Timed run
     t0 = ns_us_ticker_read(&timer_cfg);
 
-    interpreter->Invoke();
+    while(1)
+    {
+        interpreter->Invoke();
+    }
 
     t1 = ns_us_ticker_read(&timer_cfg);
 
