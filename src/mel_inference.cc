@@ -169,7 +169,7 @@ int main(void){
     // Timed run
     t0 = ns_us_ticker_read(&timer_cfg);
 
-    while(1)
+    if(1)
     {
         interpreter->Invoke();
     }

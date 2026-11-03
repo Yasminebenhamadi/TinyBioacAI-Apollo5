@@ -4,7 +4,7 @@
 #define SAMPLE_RATE 20480
 #define AUDIO_LEN 30720
 
-#define MEL_MAIN 0
+#define MEL_MAIN 1
 
 const int16_t audio_int16[AUDIO_LEN] = {    
      73,    -57,    -20,    -90,     81,    170,   -141,     78,   -153,     18,
