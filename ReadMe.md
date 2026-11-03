@@ -69,3 +69,21 @@ make view
 If you are using Visual Studio Code, you can configure debugging by creating a `launch.json` file inside the `.vscode/` directory.
 
 This allows you to set breakpoints and debug the application directly from VS Code.
+
+
+
+## Structure
+
+`conv1D_inference.cc` contains the Bit-sliced Gabor inference implementation, while `mel_inference.cc` contains the log-mel spectrogram inference implementation.
+
+To switch between the two modes, change `#define MEL_MAIN 1` in `audio.h`:
+
+- `#define MEL_MAIN 1` → Log-mel inference
+- `#define MEL_MAIN 0` → Bit-sliced Gabor inference
+
+**Important:** Run `make clean` before rebuilding whenever you switch between the two modes, to ensure that all source files are recompiled with the correct configuration.
+
+```bash
+make clean
+make -j
+```
